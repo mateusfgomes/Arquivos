@@ -1,2 +1,2 @@
 # Arquivos
-DIsciplina de Organização de Arquivos
+Disciplina de Organização de Arquivos
