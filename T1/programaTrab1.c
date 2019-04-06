@@ -4,22 +4,25 @@
 
 typedef struct Dados{
   double salario;
+  long long int encadeamentolista;
+  char telefone[14];
+  char nome[100];
+  char cargo[100];
   int id;
   int tamanhonome;
   int tamanhocargo;
   int tamanhoregistro;
-  char* telefone;
-  char* nome;
-  char* cargo;
+  char removido;
+  char campo4;
+  char campo5;
 }Dados;
 
-void limpar_pessoa(Dados** pessoa, int n_linhas){
+void limpar_pessoa(Dados* pessoa, int n_linhas){
 
   for(int i = 0; i < n_linhas; i++){
-    free(pessoa[i]->telefone);
-    //free(pessoa[i]->nome);
-    //free(pessoa[i]->cargo);
-    free(pessoa[i]);
+    free(pessoa[i].telefone);
+    free(pessoa[i].nome);
+    free(pessoa[i].cargo);
   }
   free(pessoa);
 
@@ -27,18 +30,18 @@ void limpar_pessoa(Dados** pessoa, int n_linhas){
 }
 
 
-void reset_var(Dados** pessoa, int p){
+void reset_var(Dados* pessoa, int p){
 
-  pessoa[p]->telefone[0] = '\0';
-  for (int i = 1; i < 14; i++) {
-    pessoa[p]->telefone[i] = '@';
-  }
+  memset(pessoa[p].telefone, '@', 14);
 
-  strcpy(pessoa[p]->nome, "\0");
-  strcpy(pessoa[p]->cargo, "\0");
+
+  strcpy(pessoa[p].nome, "\0");
+  strcpy(pessoa[p].cargo, "\0");
 
 
 }
+
+
 
 int contar_linhas(FILE* fp){
 
@@ -53,15 +56,14 @@ int contar_linhas(FILE* fp){
   return count;
 }
 
-Dados** ler_arquivo(FILE* fp, int n_linhas){
+Dados* ler_arquivo(FILE* fp, int n_linhas){
 
-  Dados** pessoa = (Dados**) malloc(n_linhas*(sizeof(Dados*)));
-  for (int i = 0; i < n_linhas; i++) {
-    pessoa[i] = (Dados*) malloc(sizeof(Dados));
-    pessoa[i]->telefone = (char*) malloc(14*sizeof(char));
-    pessoa[i]->nome = (char*) malloc(50*sizeof(char));
-    pessoa[i]->cargo = (char*) malloc(100*sizeof(char));
-  }
+  Dados* pessoa = (Dados*) malloc(n_linhas*(sizeof(Dados)));
+  /*for (int i = 0; i < n_linhas; i++) {
+    pessoa[i].telefone = (char*) malloc(14*sizeof(char));
+    pessoa[i].nome = (char*) malloc(50*sizeof(char));
+    pessoa[i].cargo = (char*) malloc(100*sizeof(char));
+  }*/
   char c;
 
   /*Ignorando a primeira linha*/
@@ -72,28 +74,21 @@ Dados** ler_arquivo(FILE* fp, int n_linhas){
 
   for(int j = 0; j < n_linhas; j++){
 
+    char aux[14];
     reset_var(pessoa, j);
 
-    fscanf(fp, "%d", &pessoa[j]->id);
+    fscanf(fp, "%d", &pessoa[j].id);
     fscanf(fp, "%*c");
-    fscanf(fp, "%lf", &pessoa[j]->salario);
+    fscanf(fp, "%lf", &pessoa[j].salario);
     fscanf(fp, "%*c");
-    fscanf(fp, "%[^,]", pessoa[j]->telefone);
+    strcpy(aux, "\0@@@@@@@@@@@@@");
+    fscanf(fp, "%[^,]", aux);
+    strcpy(pessoa[j].telefone, aux);
     fscanf(fp, "%*c");
-    fscanf(fp, "%[^,]", pessoa[j]->nome);
+    fscanf(fp, "%[^,]", pessoa[j].nome);
     fscanf(fp, "%*c");
-    fscanf(fp, "%[^\r\n]", pessoa[j]->cargo);
+    fscanf(fp, "%[^\r\n]", pessoa[j].cargo);
     fscanf(fp, "%*c");
-
-    // printf("%ld\n", strlen(pessoa[j]->nome));
-    // printf("%ld\n", strlen(pessoa[j]->cargo));
-
-		// printf("%d\n", pessoa[j]->id);
-		// printf("%s\n", pessoa[j]->telefone);
-		// printf("%.1lf\n", pessoa[j]->salario);
-		// printf("%s\n", pessoa[j]->cargo);
-		// printf("%s\n", pessoa[j]->nome);
-    // printf("\n\n\n");
 
   }
 
@@ -101,33 +96,124 @@ Dados** ler_arquivo(FILE* fp, int n_linhas){
 
 }
 
-void escrever_binario(Dados** vet, FILE* bin, int n_linhas){
+void reg_cabecalho(FILE* bin, int n_linhas){
 
+  char abre = '0';
+  long long int topoLista = -1;
+  char tagCampo1 = 'i';
+  char desCampo1[40] = "numero de identificacao do servidor";
+  char tagCampo2 = 's';
+  char desCampo2[40] = "salario do servidor";
+  char tagCampo3 = 't';
+  char desCampo3[40] = "telefone celular do servidor";
+  char tagCampo4 =  'n';
+  char desCampo4[40] = "nome do servidor";
+  char tagCampo5 = 'c';
+  char desCampo5[40] = "cargo do servidor";
+  char especial = '@';
 
-  for(int i = 0; i < n_linhas; i++){
-    vet[i]->tamanhonome = strlen(vet[i]->nome);
-    vet[i]->tamanhocargo = strlen(vet[i]->cargo);
-    vet[i]->tamanhoregistro = 49 + vet[i]->tamanhonome + vet[i]->tamanhocargo;
-    fwrite(&vet[i]->tamanhoregistro, sizeof(int), 1, bin);
-    fwrite(&vet[i]->id, sizeof(int), 1, bin);
-    fwrite(&vet[i]->salario, sizeof(double), 1, bin);
-    fwrite(&vet[i]->telefone, sizeof(char), 14, bin);
-    fwrite(&vet[i]->tamanhonome, sizeof(int), 1, bin);
-    fwrite(&vet[i]->nome, sizeof(char), strlen(vet[i]->nome), bin);
-    fwrite(&vet[i]->tamanhocargo, sizeof(int), 1, bin);
-    fwrite(&vet[i]->cargo, sizeof(char), strlen(vet[i]->cargo), bin);
+  fwrite(&abre, sizeof(char), 1, bin);
+  fwrite(&topoLista, sizeof(long long int), 1, bin);
+  fwrite(&tagCampo1, sizeof(char), 1, bin);
+  fwrite(&desCampo1, sizeof(char), 36, bin);
+  for(int i = 0; i < 4; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
+  }
+  fwrite(&tagCampo2, sizeof(char), 1, bin);
+  fwrite(&desCampo2, sizeof(char), 20, bin);
+  for(int i = 0; i < 20; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
+  }
+  fwrite(&tagCampo3, sizeof(char), 1, bin);
+  fwrite(&desCampo3, sizeof(char), 29, bin);
+  for(int i = 0; i < 11; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
+  }
+  fwrite(&tagCampo4, sizeof(char), 1, bin);
+  fwrite(&desCampo4, sizeof(char), 17, bin);
+  for(int i = 0; i < 23; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
+  }
+  fwrite(&tagCampo5, sizeof(char), 1, bin);
+  fwrite(&desCampo5, sizeof(char), 18, bin);
+
+  for(int i = 0; i < 31808; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
+  }
+}
+
+void preenche_arroba(int restante, FILE* bin, int* contador){
+
+  char especial = '@';
+
+  for(int i = 0; i < restante; i++){
+    fwrite(&especial, sizeof(char), 1, bin);
   }
 
+  *contador = 0;
+
 }
+
+void escrever_binario(Dados* vet, FILE* bin, int n_linhas){
+
+  reg_cabecalho(bin, n_linhas);
+  int count_pag = 0;
+
+  for(int i = 0; i < n_linhas; i++){
+
+    vet[i].campo5 = 'c';
+    vet[i].campo4 = 'n';
+    vet[i].removido = '-';
+    vet[i].encadeamentolista = -1;
+    vet[i].tamanhonome = ((strlen(vet[i].nome)) + 1);
+    vet[i].tamanhocargo = ((strlen(vet[i].cargo)) + 1);
+    vet[i].tamanhoregistro = (49 + vet[i].tamanhonome + vet[i].tamanhocargo);
+    if(vet[i].tamanhonome == 1){
+      vet[i].tamanhoregistro -= 6;
+    }
+    if(vet[i].tamanhocargo == 1){
+      vet[i].tamanhoregistro -= 6;
+    }
+    if(count_pag + vet[i].tamanhoregistro > 32000)
+      preenche_arroba(32000 - count_pag, bin, &count_pag);
+
+    count_pag += vet[i].tamanhoregistro;
+    fwrite(&(vet[i].removido), sizeof(char), 1, bin);
+    fwrite(&(vet[i].tamanhoregistro), sizeof(int), 1, bin);
+    fwrite(&(vet[i].encadeamentolista), sizeof(long long int), 1, bin);
+    fwrite(&(vet[i].id), sizeof(int), 1, bin);
+    //if(vet[i].salario == 0) vet[i].salario = -1;
+    fwrite(&(vet[i].salario), sizeof(double), 1, bin);
+    fwrite(&(vet[i].telefone),sizeof(char),14,bin);
+    if(vet[i].tamanhonome > 1) fwrite(&(vet[i].tamanhonome), sizeof(int), 1, bin);
+    if(vet[i].tamanhonome > 1) fwrite(&(vet[i].campo4), sizeof(char), 1, bin);
+    if(vet[i].tamanhonome > 1) fwrite(&(vet[i].nome), sizeof(char), vet[i].tamanhonome, bin);
+    if(vet[i].tamanhocargo > 1) fwrite(&(vet[i].tamanhocargo), sizeof(int), 1, bin);
+    if(vet[i].tamanhocargo > 1) fwrite(&(vet[i].campo5), sizeof(char), 1, bin);
+    if(vet[i].tamanhocargo > 1) fwrite(&(vet[i].cargo), sizeof(char), vet[i].tamanhocargo, bin);
+
+
+    // printf("%d\n", vet[i].id);
+		// printf("%s\n", vet[i].telefone);
+		// printf("%.1lf\n", vet[i].salario);
+		// printf("%s\n", vet[i].cargo);
+		// printf("%s\n", vet[i].nome);
+    // printf("\n\n\n\n");
+  }
+
+  preenche_arroba(32000-count_pag, bin, &count_pag);
+}
+
 
 int main(void){
 
   //char s[50];
   //scanf("%s", s);
   FILE* fp;
-  Dados** pessoa;
+  Dados* pessoa;
   FILE* bin;
   int n_linhas;
+  char um = '1';
 
   fp = fopen("arquivo.csv", "r");
   bin = fopen("arquivo.bin", "wb+");
@@ -140,7 +226,9 @@ int main(void){
   escrever_binario(pessoa, bin, n_linhas);
 
 
-  limpar_pessoa(pessoa, n_linhas);
+  //limpar_pessoa(pessoa, n_linhas);
+  rewind(bin);
+  fwrite(&um, sizeof(char), 1, bin);
   fclose(fp);
   fclose(bin);
 
